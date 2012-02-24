@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" creationComplete="initApp();" 
+				xmlns:component="deepen.core.component.*" xmlns:charts="charts.*" backgroundColor="white" verticalAlign="middle">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.charts.renderers.CircleItemRenderer;
+			import mx.collections.ArrayCollection; 
+			import mx.rpc.events.ResultEvent;    
+			import mx.utils.ObjectProxy;    
+			import flash.external.ExternalInterface;
+			import common.AdobeExportImage;
+			import mx.charts.series.items.LineSeriesItem; 
+			import mx.charts.series.LineSeries; 
+			import mx.charts.HitData;
+			
+			[Bindable]
+			private var dateXmlList:ArrayCollection=new ArrayCollection();//初始化数据
+			private function initApp():void {
+				Math.random();
+				service.url="xml_data/EnergyRateMonthData.xml?chartNo="+Math.random();
+				service.send();//从本地XML数据文件中 读取数据到dateXmlList:ArrayCollection中 
+				if(ExternalInterface.available)
+				{
+					try {
+						ExternalInterface.addCallback("exportChart", callExportChart);
+					}
+					catch (error:SecurityError )
+					{
+						trace("A Security Error occurred " + error.message);
+					}
+					catch (error:Error)
+					{
+						trace("An Error occurred: " + error.message);
+					}
+				}
+				else
+				{
+					trace("External interface is not available for this container.");
+				}
+			}
+			
+			private function callExportChart(url:String):void{
+				var exportImage:AdobeExportImage = new AdobeExportImage();
+				exportImage.sendImageByte(chartPanel,url);
+			}
+			
+			private function handleData(evt:ResultEvent):void 
+			{
+				dateXmlList=evt.result.root.node;
+			}
+			
+			private function formatDataTipxxx(hitData:HitData):String
+			{
+
+				var itemsDictionary:Dictionary = new Dictionary(); 
+				
+				for(var property:Object in hitData.item){ 
+					
+					itemsDictionary[property] = hitData.item[property]; 
+					
+				} 
+				
+				var series:LineSeries = LineSeries(hitData.element); 			
+				var item:LineSeriesItem = LineSeriesItem(hitData.chartItem); 
+				var quarter:Object = h2.formatForScreen(item.xValue);
+				var value:Number = Number(item.yValue);
+				
+				return  "<b>" + series.displayName + "</b>\n" + 
+					"" + quarter + "\n" + 	
+					value.toFixed(2);
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<mx:HTTPService id="service" showBusyCursor="true" useProxy="false" result="handleData(event)"/>  
+	<mx:Panel id="chartPanel" title="能率管理月表" width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+		<mx:ApplicationControlBar dock="true"  width="100%">
+			<mx:Label text="能率管理月表" id="chartTitleLable" enabled="true" width="183" height="35" fontSize="22" fontWeight="bold"/>
+			<mx:Spacer width="100%" />
+			<mx:Legend dataProvider="{energyRateMonthChart}" />
+		</mx:ApplicationControlBar>
+		
+		<mx:LineChart id="energyRateMonthChart" dataProvider="{dateXmlList}" 
+					  showDataTips="true" width="95%" height="95%" fontSize="12" horizontalCenter="0" verticalCenter="43" dataTipFunction="formatDataTipxxx" >
+			<!--categoryField：横坐标数据节点-->
+			<mx:horizontalAxis>
+				<mx:CategoryAxis id="h2" 
+								 categoryField="days"/>
+			</mx:horizontalAxis>
+			
+			<mx:horizontalAxisRenderers>
+				<mx:AxisRenderer placement="bottom" axis="{h2}" />
+			</mx:horizontalAxisRenderers>
+			
+			<!--纵坐标-->
+			<mx:verticalAxis>
+				<mx:LinearAxis id="ver2"  title="能率累计（%）" maximumLabelPrecision="2" />              
+			</mx:verticalAxis>
+			
+			<mx:series>
+				
+				<!--纵坐标轴2-->
+				<mx:LineSeries  xField="days" yField="data1" displayName="直接能率（%）"  radius="6" itemRenderer="mx.charts.renderers.CircleItemRenderer"/>
+				<mx:LineSeries  xField="days" yField="data2" displayName="制造能率（%）" radius="6" itemRenderer="mx.charts.renderers.CircleItemRenderer"/>
+				<mx:LineSeries  xField="days" yField="data3" displayName="总能率（%）" radius="6" itemRenderer="mx.charts.renderers.CircleItemRenderer"/>
+				
+			</mx:series>
+		</mx:LineChart> 
+	</mx:Panel>
+</mx:Application>

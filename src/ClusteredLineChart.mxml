@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" creationComplete="initApp();" 
+				xmlns:component="deepen.core.component.*" xmlns:charts="charts.*" backgroundColor="white" verticalAlign="middle">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.charts.renderers.CircleItemRenderer;
+			import mx.collections.ArrayCollection; 
+			import mx.rpc.events.ResultEvent;    
+			import mx.utils.ObjectProxy;    
+			import flash.external.ExternalInterface;
+			import common.AdobeExportImage;
+			import mx.charts.series.items.LineSeriesItem; 
+			import mx.charts.series.LineSeries; 
+			import mx.charts.HitData;
+			import mx.charts.series.items.ColumnSeriesItem; 
+			import mx.charts.series.ColumnSeries; 
+			
+			[Bindable]
+			private var dateXmlList:ArrayCollection=new ArrayCollection();//初始化数据
+			private function initApp():void {
+				Math.random();
+				service.url="xml_data/ClusteredLineData.xml?chartNo="+Math.random();
+				service.send();//从本地XML数据文件中 读取数据到dateXmlList:ArrayCollection中 
+				if(ExternalInterface.available)
+				{
+					try {
+						ExternalInterface.addCallback("exportChart", callExportChart);
+					}
+					catch (error:SecurityError )
+					{
+						trace("A Security Error occurred " + error.message);
+					}
+					catch (error:Error)
+					{
+						trace("An Error occurred: " + error.message);
+					}
+				}
+				else
+				{
+					trace("External interface is not available for this container.");
+				}
+			}
+			
+			private function callExportChart(url:String):void{
+				var exportImage:AdobeExportImage = new AdobeExportImage();
+				exportImage.sendImageByte(chartPanel,url);
+			}
+			
+			private function handleData(evt:ResultEvent):void 
+			{
+				dateXmlList=evt.result.root.node;
+			}
+			private function formatDataTipxxx(hitData:HitData):String
+			{
+				
+				var itemsDictionary:Dictionary = new Dictionary(); 
+				
+				for(var property:Object in hitData.item){ 
+					
+					itemsDictionary[property] = hitData.item[property]; 
+					
+				} 
+				if(hitData.chartItem.element.name=='LineSeries20'){
+					var series:LineSeries = LineSeries(hitData.element); 			
+					var item:LineSeriesItem = LineSeriesItem(hitData.chartItem); 
+					var quarter:Object = h2.formatForScreen(item.xValue);
+					var value:Number = Number(item.yValue);
+					
+					return  "<b>" + series.displayName + "</b>\n" + 
+						"" + quarter + "\n" + 	
+						value.toFixed(2); 
+				
+				} else {
+					var series1:ColumnSeries = ColumnSeries(hitData.element); 			
+					var item1:ColumnSeriesItem = ColumnSeriesItem(hitData.chartItem); 
+					var quarter1:Object = h2.formatForScreen(item1.xValue);
+					var value1:Number = Number(item1.yValue);
+					
+					return  "<b>" + series1.displayName + "</b>\n" + 
+						"" + quarter1 + "\n" + 	
+						value1.toFixed(2);
+				}
+			}
+			
+		]]>
+	</mx:Script>
+	<mx:HTTPService id="service" showBusyCursor="true" useProxy="false" result="handleData(event)"/>  
+	<mx:Panel id="chartPanel" title="Graph台数＆人員" width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+	<mx:ApplicationControlBar dock="true"  width="100%">
+		<mx:Label text="Graph台数＆人員" id="chartTitleLable" enabled="true" width="183" height="35" fontSize="22" fontWeight="bold"/>
+		<mx:Spacer width="100%" />
+		<mx:Legend dataProvider="{culsteredLineChart}" />
+	</mx:ApplicationControlBar>
+	
+	<mx:ColumnChart id="culsteredLineChart" dataProvider="{dateXmlList}" 
+					showDataTips="true" width="95%" height="95%"  type="clustered" fontSize="12" horizontalCenter="0" verticalCenter="43" dataTipFunction=" formatDataTipxxx" >
+		<!--categoryField：横坐标数据节点-->
+		<mx:horizontalAxis>
+			<mx:CategoryAxis id="h2" 
+							 categoryField="months" />
+		</mx:horizontalAxis>
+		
+		<mx:horizontalAxisRenderers>
+			<mx:AxisRenderer placement="bottom" axis="{h2}"/>
+		</mx:horizontalAxisRenderers>
+		
+		<!--纵坐标-->
+		
+		<mx:verticalAxisRenderers>
+			<mx:AxisRenderer placement="left" axis="{ver2}" />
+			<mx:AxisRenderer placement="right"  axis="{ver1}" showLine="true" />
+		</mx:verticalAxisRenderers>
+		
+		<mx:series>
+			<mx:ColumnSeries displayName="生产台数"  horizontalAxis="{h2}" yField="data1">
+				<mx:verticalAxis>
+					<mx:LinearAxis id="ver2"  title="生产台数（台）" maximumLabelPrecision="2" />              
+				</mx:verticalAxis>
+			</mx:ColumnSeries>
+			
+			<!--纵坐标轴2-->
+			<mx:LineSeries  xField="months" yField="data2" displayName="平均人员" radius="6" itemRenderer="mx.charts.renderers.CircleItemRenderer">
+				<mx:verticalAxis>
+					<mx:LinearAxis id="ver1" title="平均人员（人）" maximumLabelPrecision="2" />
+				</mx:verticalAxis>
+			</mx:LineSeries>
+			
+		</mx:series>
+	</mx:ColumnChart> 
+		</mx:Panel>
+</mx:Application>
